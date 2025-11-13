@@ -50,6 +50,7 @@ graph TB
         StateA1[(State DB A1<br/>Partition 1)]
         StateA2[(State DB A2<br/>Partition 2)]
         StateAN[(State DB AN<br/>Partition N)]
+        GraphQLA[GraphQL Service A<br/>Query Layer]
     end
     
     subgraph "Region B - EU West ❌ NOT IMPLEMENTED"
@@ -58,6 +59,7 @@ graph TB
         StateB1[(State DB B1<br/>Partition 1)]
         StateB2[(State DB B2<br/>Partition 2)]
         StateBN[(State DB BN<br/>Partition N)]
+        GraphQLB[GraphQL Service B<br/>Query Layer]
     end
     
     subgraph "Region C - Asia Pacific ❌ NOT IMPLEMENTED"
@@ -66,6 +68,7 @@ graph TB
         StateC1[(State DB C1<br/>Partition 1)]
         StateC2[(State DB C2<br/>Partition 2)]
         StateCN[(State DB CN<br/>Partition N)]
+        GraphQLC[GraphQL Service C<br/>Query Layer]
     end
     
     Controller -->|✅ 1. Create/Update Event| Marten
@@ -94,6 +97,18 @@ graph TB
     HashC -.->|❌ 8c. Route to Partition 2| StateC2
     HashC -.->|❌ 8c. Route to Partition N| StateCN
     
+    StateA1 -.->|❌ 9a. Query Data| GraphQLA
+    StateA2 -.->|❌ 9a. Query Data| GraphQLA
+    StateAN -.->|❌ 9a. Query Data| GraphQLA
+    
+    StateB1 -.->|❌ 9b. Query Data| GraphQLB
+    StateB2 -.->|❌ 9b. Query Data| GraphQLB
+    StateBN -.->|❌ 9b. Query Data| GraphQLB
+    
+    StateC1 -.->|❌ 9c. Query Data| GraphQLC
+    StateC2 -.->|❌ 9c. Query Data| GraphQLC
+    StateCN -.->|❌ 9c. Query Data| GraphQLC
+    
     style Controller fill:#4CAF50
     style Marten fill:#2196F3
     style EventProjection fill:#2196F3
@@ -117,6 +132,10 @@ graph TB
     style StateC1 fill:#9E9E9E,stroke-dasharray: 5 5
     style StateC2 fill:#9E9E9E,stroke-dasharray: 5 5
     style StateCN fill:#9E9E9E,stroke-dasharray: 5 5
+    
+    style GraphQLA fill:#9E9E9E,stroke-dasharray: 5 5
+    style GraphQLB fill:#9E9E9E,stroke-dasharray: 5 5
+    style GraphQLC fill:#9E9E9E,stroke-dasharray: 5 5
 ```
 
 ### Flow Description
@@ -132,6 +151,7 @@ graph TB
 6. **Regional Subscribers** consume events from Service Bus in each geographic region
 7. **Hash Function** distributes data across partitioned databases within each region
 8. **State Databases** store materialized views for low-latency queries
+9. **GraphQL Services** provide efficient query layer for accessing regional state databases
 
 ## 📁 Project Structure
 
@@ -207,8 +227,6 @@ EventSourcing/
 
 - `POST /api/properties` - Create a new property
 - `PUT /api/properties/{id}` - Update an existing property
-- `GET /api/properties/{id}` - Get property by ID
-- `GET /api/properties` - Get all properties
 
 ## 🚀 Getting Started
 
@@ -297,7 +315,47 @@ GET /api/properties/{id}
 GET /api/properties
 ```
 
-## 🔮 Future Enhancements
+## � Querying State Databases
+
+Once the regional state databases are built and materialized views are established, the recommended approach for querying data is to use a **GraphQL service** rather than traditional REST endpoints.
+
+### Why GraphQL?
+
+- **Precise Data Fetching**: Clients request only the fields they need, reducing bandwidth and improving performance
+- **Single Endpoint**: One GraphQL endpoint can serve multiple query patterns
+- **Strongly Typed**: Schema provides clear contracts and excellent tooling support
+- **Efficient Joins**: Fetch related data in a single request without multiple round trips
+- **Regional Optimization**: GraphQL resolvers can efficiently query partitioned state databases
+
+### Example GraphQL Query (Future Implementation)
+
+```graphql
+query GetProperty($id: ID!) {
+  property(id: $id) {
+    id
+    address
+    ownerName
+    price
+    lastUpdated
+  }
+}
+
+query SearchProperties($filter: PropertyFilter) {
+  properties(filter: $filter) {
+    edges {
+      node {
+        id
+        address
+        price
+      }
+    }
+  }
+}
+```
+
+This approach separates the **command** path (write operations through Event Store) from the **query** path (read operations through GraphQL and state databases), following the CQRS pattern.
+
+## �🔮 Future Enhancements
 
 ### Phase 1: Regional Subscribers (Not Implemented)
 - [ ] Implement Service Bus subscription listeners per region
@@ -312,8 +370,10 @@ GET /api/properties
 ### Phase 3: State Database Layer (Not Implemented)
 - [ ] Set up regional state databases (SQL, CosmosDB, etc.)
 - [ ] Implement state projection/materialization logic
-- [ ] Build query APIs for state databases
+- [ ] Build GraphQL service for querying state databases (recommended)
 - [ ] Add caching layer for frequently accessed data
+
+> **💡 Recommendation:** Once the state databases are built and populated with materialized views, it is recommended to use a **GraphQL service** for querying data. GraphQL provides flexible, efficient queries with precise field selection, reducing over-fetching and enabling clients to request exactly the data they need from the regional state databases.
 
 ### Phase 4: Geo-Replication
 - [ ] Configure cross-region replication
