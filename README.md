@@ -414,7 +414,7 @@ This approach separates the **command** path (write operations through Event Sto
 
 ## 👥 Authors
 
-Your Name - Initial work
+Rex Ph
 
 ## 🙏 Acknowledgments
 
